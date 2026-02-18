@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, make_response
+from phone_valid import phone_number_valid
 
 app = Flask(__name__)
 applications = app
@@ -35,6 +36,22 @@ def form_params():
         return response
     
     return render_template('form_params.html', title='Авторизация', method='GET')
+
+@app.route('/phone', methods=['GET', 'POST'])
+def phone_form():
+    result = None
+    error = None
+    phone_input = ''
+    if request.method == 'POST':
+        phone_input = request.form.get('phone', '').strip()
+        try:    
+            result = phone_number_valid(phone_input)
+        except ValueError as err:
+            error = str(err)
+        
+        return render_template('phone_form.html', title='Номер телефона', method='POST', result=result, error=error)
+    
+    return render_template('phone_form.html', title='Номер телефона', method='GET')
 
 if __name__ == '__main__':
     try:
