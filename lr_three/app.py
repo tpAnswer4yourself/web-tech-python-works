@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, request, make_response, flash, redirect, url_for
+from flask import Flask, render_template, session, request, flash, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__)
@@ -8,8 +8,8 @@ app.secret_key = '123123123'
 login_manager = LoginManager()
 login_manager.init_app(app=app)
 login_manager.login_view = 'auth_form'
-login_manager.login_message = 'Войдите, чтобы просмотреть эту страницу!'
-login_manager.login_message_category = 'info'
+login_manager.login_message = 'Для доступа к запрашиваемой странице необходимо пройти процедуру аутентификации!'
+login_manager.login_message_category = 'warning'
 
 class User(UserMixin):
     def __init__(self, id, login, password):
@@ -57,7 +57,7 @@ def auth_form():
             flash('Вы успешно вошли в систему!', 'success')
             return(redirect(url_for('index')))
         else:
-            flash('Ошибка! Не удалось войти в систему!', 'danger')
+            flash('Неверный логин или пароль!', 'danger')
             return(render_template('auth.html', method='GET'))
         
     return render_template('auth.html')
@@ -65,8 +65,22 @@ def auth_form():
 @app.route('/logout')
 def logout():
     logout_user()
+    session.clear()
     flash('Вы вышли из аккаунта!', 'info')
     return redirect(url_for('index'))
+
+@app.route('/profile')
+@login_required
+def my_profile():
+    user_id = current_user.id
+    user_login = current_user.login
+    
+    user_info = {
+        'id': user_id,
+        'login': user_login
+    }
+    
+    return (render_template('profile.html', user=user_info))
 
 if __name__ == '__main__':
     try:

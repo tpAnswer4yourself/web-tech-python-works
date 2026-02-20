@@ -36,9 +36,16 @@
                         <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{{ url_for('guest_count') }}">Посещения</a>
                         </li>
+                        {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{{ url_for('my_profile') }}">Профиль</a>
+                        </li>
+                        {% else %}
                         <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{{ url_for('auth_form') }}">Войти</a>
                         </li>
+                        {% endif %}
+                        
                     </ul>
 
                 </div>
@@ -53,6 +60,18 @@
             {% endblock %}
         </div>
     </main>
+
+    {% include 'modal.html' %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-data" 
+                data-messages='{{ messages|tojson|safe }}' 
+                style="display: none;">
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <footer class="mt-auto bg-dark py-5">
         <div class="width-100 bg-dark">
             <p class="fs-5 text-center text-light">Разработчик: Нестерчук Антон Васильевич, 241-326<br>
@@ -65,6 +84,7 @@
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
         crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='main.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='modal-window.js') }}"></script>
 </body>
 
 </html>
