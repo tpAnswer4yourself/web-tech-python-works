@@ -5,6 +5,7 @@ from models import Role, User, db
 from database import init_db
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
+from validate_reg_data import validate_reg_data
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '123123123'
@@ -26,7 +27,8 @@ def load_user_from_bd(user_id):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    users = User.query.all()
+    return render_template('index.html', users=users)
 
 @app.route('/task')
 def task():
@@ -53,34 +55,41 @@ def login_form():
 @app.route('/register', methods=['GET', 'POST'])
 def reg_form():
     if request.method == 'POST':
-        login = request.form.get('login')
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        middle_name = request.form.get('middle_name')
-        password = request.form.get('password')
+        login = request.form.get('login').strip()
+        first_name = request.form.get('first_name').strip()
+        last_name = request.form.get('last_name').strip()
+        middle_name = request.form.get('middle_name').strip() or None
+        password = request.form.get('password', '')
         
-        #ПРОВЕРКА НА СУЩЕСТВУЮЩЕГО ЮЗЕРА!
-        existing_user = User.query.filter_by(login=login).first()
-        if existing_user:
-            flash('Логин уже занят! Попробуйте ввести другой!', 'danger')
-            return render_template('register.html', method='GET')
+        errors = validate_reg_data(login, password, first_name, last_name, middle_name)
         
-        new_user = User(
-            login = login,
-            first_name = first_name,
-            last_name = last_name,
-            middle_name = middle_name
-        )
-        new_user.set_password(password)
-        try:
-            db.session.add(new_user)
-            db.session.commit()
-            flash('Вы зарегистрировались!', 'success')
-            return redirect(url_for('login_form'))
+        if not errors:
+            #ПРОВЕРКА НА СУЩЕСТВУЮЩЕГО ЮЗЕРА!
+            existing_user = User.query.filter_by(login=login).first()
+            if existing_user:
+                flash('Логин уже занят! Попробуйте ввести другой!', 'danger')
+                return render_template('register.html', method='GET')
+            
+            new_user = User(
+                login = login,
+                first_name = first_name,
+                last_name = last_name,
+                middle_name = middle_name
+                )
+            
+            new_user.set_password(password)
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+                flash('Вы зарегистрировались!', 'success')
+                return redirect(url_for('login_form'))
         
-        except ValueError as e:
-            db.session.rollback()
-            flash(f'Ошибка при регистрации: {str(e)}', 'danger')
+            except ValueError as e:
+                db.session.rollback()
+                flash(f'Ошибка при регистрации: {str(e)}', 'danger')
+                
+        else:
+            return render_template('register.html', errors=errors)
         
     return render_template('register.html')
 
@@ -104,6 +113,12 @@ def my_profile():
     }
     
     return (render_template('profile.html', user=user_info))
+
+@app.route('/user/<int:user_id>')
+def user_page(user_id):
+    user = User.query.filter_by(id=int(user_id)).first()
+    return (render_template('user.html', user=user))
+    
 
 if __name__ == '__main__':
     try:
