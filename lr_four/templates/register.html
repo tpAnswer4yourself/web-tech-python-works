@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <!-- Регистрация -->
+        <div class="col-md-4 card py-3" id="register_form">
+            <h3 class="mb-3 text-center">Регистрация аккаунта</h3>
+            <form action="{{ url_for('reg_form') }}" method="POST" class="auth-form">
+                <div class="">
+                    <div class="mb-3">
+                        <label for="login" class="form-label">Логин</label>
+                        <input class="form-control" type="text" placeholder="Логин" name="login" id="login" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">Имя</label>
+                        <input class="form-control" type="text" placeholder="Имя" name="first_name" id="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Фамилия</label>
+                        <input class="form-control" type="text" placeholder="Фамилия" name="last_name" id="last_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="middle_name" class="form-label">Отчество</label>
+                        <input class="form-control" type="text" placeholder="Отчество (при наличии)" name="middle_name" id="middle_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Пароль</label>
+                        <input class="form-control" type="password" placeholder="Пароль" name="password" id="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary text-center">Зарегистрироваться</button>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('login_form') }}">Есть аккаунт? Войти</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
