@@ -2,10 +2,11 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import Role, User, db
 from database import init_db
-import os
+import os, re
 from validate_reg_data import validate_reg_data
 from forms import UserForm
 from wtforms.validators import Optional
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '123123123'
@@ -214,6 +215,70 @@ def roles():
 def user_page(user_id):
     user: User = User.query.filter_by(id=int(user_id)).first()
     return (render_template('user.html', user=user))
+
+@app.route('/delete/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    user: User = User.query.filter_by(id=int(user_id)).first()
+    if not user:
+        flash('Пользователь не найден!', 'danger')
+    else:
+        try:
+            db.session.delete(user)
+            db.session.commit()
+            flash(f'Пользователь {user.last_name} {user.first_name} успешно удалён!', 'success')
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'Ошибка при удалении: {str(e)}!', 'danger')
+    
+    return redirect(url_for('index'))
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    errors = {}
+    user: User = User.query.filter_by(id=current_user.id).first()
+    if request.method == 'POST':
+        old_pw = request.form.get('old_pw', '').strip()
+        new_pw = request.form.get('new_pw', '').strip()
+        new_pw_con = request.form.get('new_pw_con', '').strip()
+        
+        if not old_pw:
+            errors['old_pw'] = 'Введите старый пароль!'
+        elif not user.check_password(old_pw):
+            errors['old_pw'] = 'Неверный старый пароль!'
+        if not new_pw:
+            errors['new_pw'] = 'Введите новый пароль!'
+        else:
+            allowed_symbols = r'^[a-zA-Zа-яА-ЯёЁ0-9~!?@#$%^&*_\-+()\[\]{}></\\|\'".,;:]+$'
+            if len(new_pw) < 8:
+                errors['new_pw'] = 'Пароль должен содержать не менее 8 символов!'
+            elif len(new_pw) > 128:
+                errors['new_pw'] = 'Пароль должен содержать не более 128 символов!'
+            elif ' ' in new_pw:
+                errors['new_pw'] = 'Пароль не должен содержать пробелов!'
+            elif not re.search(r'[0-9]', new_pw):
+                errors['new_pw'] = 'Пароль должен содержать хотя бы одну цифру!'
+            elif not re.match(allowed_symbols, new_pw):
+                errors['new_pw'] = 'Пароль содержит недопустимые символы!'
+            elif not re.search(r'[A-ZА-Я]', new_pw):
+                errors['new_pw'] = 'Пароль должен содержать хотя бы одну заглавную букву!'
+            elif not re.search(r'[a-zа-я]', new_pw):
+                errors['new_pw'] = 'Пароль должен содержать хотя бы одну строчную букву!'
+        if new_pw and new_pw_con and new_pw != new_pw_con:
+            errors['new_pw_con'] = 'Пароли не совпадают!'
+        
+        if not errors: 
+            user.set_password(new_pw)
+            try:
+                db.session.commit()
+                flash('Пароль успешно изменен!', 'success')
+                return redirect(url_for('index'))
+            except ValueError as e:
+                db.session.rollback()
+                flash(f'Ошибка при смене пароля: {str(e)}!', 'danger')      
+    
+    return render_template('change_pw.html', errors=errors)
 
 if __name__ == '__main__':
     try:

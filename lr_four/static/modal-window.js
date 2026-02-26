@@ -27,19 +27,28 @@ class ModalManager {
             case 'confirm':
                 modalHeader.classList.add('bg-danger', 'text-white')
                 document.getElementById('messageModalLabel').textContent = 'Подтверждение';
-                const btn_confirm = document.createElement('button')
-                btn_confirm.type = 'button'
-                btn_confirm.classList.add('btn', 'btn-success')
-                btn_confirm.textContent = 'Да'
-                btn_confirm.onclick = () => {
-                    if (this.confirmCallback()) {
+
+                const footer = document.getElementById('modalFooter')
+                footer.innerHTML = ''
+                const btnNo = document.createElement('button')
+                btnNo.type = 'button'
+                btnNo.classList.add('btn', 'btn-dark')
+                btnNo.textContent = 'Нет'
+                btnNo.setAttribute('data-bs-dismiss', 'modal')
+                footer.appendChild(btnNo)
+
+                const btnYes = document.createElement('button')
+                btnYes.type = 'button'
+                btnYes.classList.add('btn', 'btn-danger')
+                btnYes.textContent = 'Да'
+                btnYes.onclick = () => {
+                    if (this.confirmCallback) {
                         this.confirmCallback()
                     }
                     this.messageModal.hide()
-                };
+                }
+                footer.appendChild(btnYes)
 
-                document.getElementById('btn_close_confirm').textContent = 'Нет'
-                document.getElementById('modalFooter').prepend(btn_confirm)
                 break
             
             default:
@@ -69,11 +78,27 @@ class ModalManager {
     confirm(msg, callback) {
         this.confirmCallback = callback
         this.showMessage(msg, 'confirm')
-
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     window.ModalManager = new ModalManager()
     window.ModalManager.showFlashMessage()
+
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.userId
+            const userName = this.dataset.userName
+
+            window.ModalManager.confirm(
+                `Вы уверены, что хотите удалить ${userName}?`, () => {
+                    const form = document.createElement('form')
+                    form.method = 'POST'
+                    form.action = `/delete/${userId}`
+                    document.body.appendChild(form)
+                    form.submit()
+                }
+            )
+        })
+    })
 })
