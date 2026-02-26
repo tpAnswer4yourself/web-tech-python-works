@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, flash, redirect, url_for
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import Role, User, db
 from database import init_db
-from werkzeug.security import check_password_hash, generate_password_hash
 import os
 from validate_reg_data import validate_reg_data
+from forms import UserForm
+from wtforms.validators import Optional
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '123123123'
@@ -114,11 +114,106 @@ def my_profile():
     
     return (render_template('profile.html', user=user_info))
 
+@app.route('/create', methods=['POST', 'GET'])
+@login_required
+def create_user():
+    form = UserForm()
+    
+    if form.validate_on_submit():
+        ex_user = User.query.filter_by(login=form.login.data).first()
+        if ex_user:
+            flash('Данный логин уже занят! Попробуйте другой!', 'danger')
+        else:
+            new_user = User(
+                login=form.login.data.strip(),
+                first_name=form.first_name.data.strip(),
+                last_name=form.last_name.data.strip(),
+                middle_name=form.middle_name.data.strip() or None,
+                role_id=form.role_id.data if form.role_id.data != 0 else None
+            )
+            new_user.set_password(form.password.data)
+        
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+                flash('Аккаунт успешно создан!', 'success')
+                return redirect(url_for('index'))
+            except ValueError as e:
+                db.session.rollback()
+                flash(f'Ошибка при создании аккаунта: {str(e)}', 'danger')
+    
+    return render_template(
+        'user_form.html',
+        form=form,
+        title="Создание нового пользователя",
+        is_create=True,
+        submit_text='Создать'
+    )
+            
+@app.route('/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    user: User = User.query.filter_by(id=int(user_id)).first()
+    form = UserForm(obj=user)
+    
+    form.password.validators = [Optional()]
+    form.login.validators = []
+    
+    if form.validate_on_submit():
+        user.first_name = form.first_name.data.strip()
+        user.last_name = form.last_name.data.strip()
+        user.middle_name = form.middle_name.data.strip() or None
+        user.role_id = form.role_id.data if form.role_id.data != 0 else None
+        
+        try:   
+            db.session.commit()
+            flash('Данные пользователя обновлены!', 'success')
+            return redirect(url_for('index'))
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'Ошибка при редактировании аккаунта: {str(e)}', 'danger')
+        
+    return render_template(
+        'user_form.html',
+        form=form,
+        title=f"Редактирование пользователя №{user.id}",
+        is_create=False,
+        submit_text='Сохранить'
+    )
+    
+@app.route('/roles', methods=['POST', 'GET'])
+@login_required
+def roles():
+    all_roles = Role.query.all()
+    
+    if request.method == 'POST':
+        name = request.form.get('name_role').strip()
+        desc = request.form.get('desc_role').strip()
+        
+        ex_role = Role.query.filter_by(name=name).first()
+        if ex_role:
+            flash('Такая роль уже существует! Попробуйте создать другую!', 'danger')
+            return render_template('roles.html', method='GET', roles=all_roles)
+        new_role = Role(
+            name=name,
+            description=desc
+        )
+        try:
+            db.session.add(new_role)
+            db.session.commit()
+            flash('Роль успешно добавлена!', 'success')
+            return render_template('roles.html', method='GET', roles=all_roles)
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'Ошибка при создании роли: {str(e)}', 'danger')
+            
+    
+    return (render_template('roles.html', roles=all_roles))
+
 @app.route('/user/<int:user_id>')
 def user_page(user_id):
-    user = User.query.filter_by(id=int(user_id)).first()
+    user: User = User.query.filter_by(id=int(user_id)).first()
     return (render_template('user.html', user=user))
-    
 
 if __name__ == '__main__':
     try:
