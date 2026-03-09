@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from models import Role, User, db
+from models import Role, User, db, VisitLog
 from database import init_db
 import os, re
 from validate_reg_data import validate_reg_data
@@ -8,6 +8,7 @@ from forms import UserForm
 from wtforms.validators import Optional
 from werkzeug.security import check_password_hash, generate_password_hash
 from check_rights import check_rights
+from stats import stats_bp
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '123123123'
@@ -15,7 +16,23 @@ app.config['SECRET_KEY'] = '123123123'
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'users.db')
 
+app.register_blueprint(stats_bp)
 db.init_app(app)
+
+@app.before_request
+def log_visit():
+    if request.path.startswith('/static'):
+        return
+    user_id = current_user.id if current_user.is_authenticated else None
+    visit = VisitLog(
+        path=request.path,
+        user_id=user_id
+    )
+    try:
+        db.session.add(visit)
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
 
 login_manager = LoginManager()
 login_manager.init_app(app=app)
@@ -96,6 +113,7 @@ def reg_form():
     return render_template('register.html')
 
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
     flash('Вы вышли из аккаунта!', 'info')
@@ -118,7 +136,7 @@ def my_profile():
 
 @app.route('/create', methods=['POST', 'GET'])
 @login_required
-@check_rights('create_user') ##ДЕКОРАТОР ПРАВ ДОСТУПА!!!!!!
+@check_rights('create_user')
 def create_user():
     form = UserForm()
     
@@ -155,9 +173,15 @@ def create_user():
             
 @app.route('/edit/<int:user_id>', methods=['GET', 'POST'])
 @login_required
+@check_rights('edit_user')
 def edit_user(user_id):
     user: User = User.query.filter_by(id=int(user_id)).first()
     form = UserForm(obj=user)
+
+    ### ЕСЛИ ЧТО ЗАКОММЕНТИТЬ, ЧТОБЫ ПОМЕНЯТЬ РОЛЬ ДЛЯ ТЕСТОВ
+    if not current_user.has_role('admin'):
+        form.role_id.render_kw = {'disabled': 'disabled'}
+    #############################################
     
     form.password.validators = [Optional()]
     form.login.validators = []
@@ -186,6 +210,7 @@ def edit_user(user_id):
     
 @app.route('/roles', methods=['POST', 'GET'])
 @login_required
+@check_rights('role_editor')
 def roles():
     all_roles = Role.query.all()
     
@@ -214,12 +239,14 @@ def roles():
     return (render_template('roles.html', roles=all_roles))
 
 @app.route('/user/<int:user_id>')
+@check_rights('view_user')
 def user_page(user_id):
     user: User = User.query.filter_by(id=int(user_id)).first()
     return (render_template('user.html', user=user))
 
 @app.route('/delete/<int:user_id>', methods=['POST'])
 @login_required
+@check_rights('delete_user')
 def delete_user(user_id):
     user: User = User.query.filter_by(id=int(user_id)).first()
     if not user:

@@ -23,10 +23,11 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(50), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     middle_name = db.Column(db.String(50), nullable=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), default=1, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
     
     role_ref = db.relationship('Role', back_populates='users')
+    visit_logs = db.relationship('VisitLog', back_populates='users')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -38,3 +39,13 @@ class User(UserMixin, db.Model):
         if self.role_ref is None:
             return False
         return self.role_ref.name.lower() == role_name.lower()
+    
+class VisitLog(db.Model):
+    __tablename__ = 'visit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    path = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    
+    users = db.relationship('User', back_populates='visit_logs')

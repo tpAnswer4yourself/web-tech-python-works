@@ -39,7 +39,11 @@
                         </li>
                         {% if current_user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{{ url_for('change_password') }}">Сменить пароль</a>
+                            <a class="nav-link" aria-current="page" href="{{ url_for('stats.visits_report') }}">Журнал посещений</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" aria-current="page" href="{{ url_for('change_password') }}">Сменить
+                                пароль</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" aria-current="page" href="{{ url_for('my_profile') }}">Профиль</a>
@@ -49,11 +53,8 @@
                             <a class="nav-link" aria-current="page" href="{{ url_for('login_form') }}">Авторизация</a>
                         </li>
                         {% endif %}
-                        
                     </ul>
-
                 </div>
-
             </div>
         </nav>
     </header>
@@ -68,12 +69,9 @@
     {% include 'modal.html' %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div id="flash-data" 
-                data-messages='{{ messages|tojson|safe }}' 
-                style="display: none;">
-            </div>
-        {% endif %}
+    {% if messages and messages|length > 0 %}
+    <div id="flash-data" data-messages='{{ messages|tojson|safe }}' style="display: none;"></div>
+    {% endif %}
     {% endwith %}
 
     <footer class="mt-auto bg-dark py-5">
